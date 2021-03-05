@@ -1,4 +1,5 @@
 //script by [STELS]BendeR
+//1.6 updates in sa_ewar.sqf
 //1.5a small spike signals optimization
 //1.5 fixed spike signals&SA_DISABLE_SPIKE_SIGNALS setting
 //1.4b added additional client signal list sync in mp

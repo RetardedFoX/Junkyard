@@ -1,6 +1,7 @@
 //script by [STELS]BendeR
 //BASIC SCRIPT REQUIRED
 //Spectrum Device friendly-foe scan & uav jamming
+//1.6 fixed jamm dedicated server issue, added spike signals while jamming, fixed messages text w/o stringtable.xml
 //1.5a changes in spectrum_device.sqf
 //1.5
 //-removed frienly-foe scan w/o antenna
@@ -24,13 +25,14 @@ if (isNil "sa_scan_in_progress") then { sa_scan_in_progress = false; };
 if (isNil "sa_visible_freq") then { sa_visible_freq = []; };
 if (isNil "sa_sens_min") then { sa_sens_min = -120; };
 if (isNil "sa_sens_max") then { sa_sens_max = -20; };
+if(isServer) then {sa_is_dedicated=isDedicated;publicVariable "sa_is_dedicated";};
 
 if(isDedicated || !hasInterface) exitWith {};
 
-sa_str_message_scan=if (isLocalized "STR_SA_Scan") then { localize "STR_SA_Scan" } else {"&lt;t align='left' valign='middle' size='1'&gt; UAV signals: &lt;t color='#00ff00'&gt; %1 &lt;/t&gt;&lt;t color='#ff0000'&gt; %2 &lt;/t&gt;&lt;br /&gt;"};
-sa_str_message_jamm=if (isLocalized "STR_SA_Jamm") then { localize "STR_SA_Jamm" } else {"&lt;t align='left' valign='middle' size='1'&gt; Success chance: %1&lt;/t&gt;"};
-sa_str_message_jamm_no_target=if (isLocalized "STR_SA_Jamm_NoTarget") then { localize "STR_SA_Jamm_NoTarget" } else {"&lt;t align='left' valign='middle' size='1'&gt; No suitable target &lt;/t&gt;"};
-sa_str_message_nofunction=if (isLocalized "STR_SA_NoFunction") then { localize "STR_SA_NoFunction" } else {"&lt;t align='left' valign='middle' size='1'&gt; This antenna not functional yet &lt;/t&gt;"};
+sa_str_message_scan=if (isLocalized "STR_SA_Scan") then { localize "STR_SA_Scan" } else {"<t align='left' valign='middle' size='1'>UAV signals: <t color='#00ff00'> %1 </t><t color='#ff0000'> %2 </t><br />Unidentified signals: %3<br />Weak signals: %4</t>"};
+sa_str_message_jamm=if (isLocalized "STR_SA_Jamm") then { localize "STR_SA_Jamm" } else {"<t align='left' valign='middle' size='1'> Success chance: %1</t>"};
+sa_str_message_jamm_no_target=if (isLocalized "STR_SA_Jamm_NoTarget") then { localize "STR_SA_Jamm_NoTarget" } else {"<t align='left' valign='middle' size='1'> No suitable target </t>"};
+sa_str_message_nofunction=if (isLocalized "STR_SA_NoFunction") then { localize "STR_SA_NoFunction" } else {"<t align='left' valign='middle' size='1'> This antenna is not functional yet </t>"};
 
 waitUntil { !isNull findDisplay 46 };
 _sa_display_ctrl=uiNamespace getVariable "sa_display_ctrl";
@@ -50,7 +52,7 @@ if (isNull _sa_display_ctrl) then {
 	_sa_display_ctrl ctrlShow false;
 };
 
-
+waitUntil {!isNil("sa_is_dedicated")};
 //
 sa_is_signal_uav={
 	params ["_signal"];
@@ -73,7 +75,7 @@ sa_scan_friendly_foe={
 	_other_signals=0;
 	_weak_signals=0;
 	{
-		[player,_x select 0 select 1] remoteExec ["fnc_sa_add_spike_signal",2];//Пока без JIP
+		[player,_x select 0 select 1] remoteExec ["fnc_sa_add_spike_signal",2];
 		if((_x select 1)>sa_ident_str) then {
 			
 			if(([_x] call sa_is_signal_uav)>0) then {
@@ -116,9 +118,10 @@ sa_jamm={
 		if (([_x] call sa_is_signal_uav) in [1,2]) then {
 			_chance=((_x select 1)-sa_sens_min)/(sa_sens_max-sa_sens_min);
 			_txt=_txt+format ["%1%2 ",round(_chance*100),"%"];
+			[player,_x select 0 select 1] remoteExec ["fnc_sa_add_spike_signal",2];
 			if(_chance>=(random 1)) then {
 				_unit=_x select 0 select 0;
-				[_unit] remoteExec ["fnc_sa_local_add_to_jamm_list",[0,-2] select isDedicated];
+				[_unit] remoteExec ["fnc_sa_local_add_to_jamm_list",[0,-2] select sa_is_dedicated];
 				if!(typeof _unit in sa_ins_list) then {
 					group _unit spawn 
 					{
